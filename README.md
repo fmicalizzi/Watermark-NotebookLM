@@ -1,8 +1,12 @@
 # PDF Watermark Manager
 
-Extension de Chrome (Manifest V3) que elimina el watermark original de PDFs generados por NotebookLM y lo reemplaza con un logo o texto personalizado. Tambien soporta imagenes sueltas.
+Herramienta para eliminar el watermark original de PDFs e imagenes generados por NotebookLM y reemplazarlo con un logo o texto personalizado.
 
-Funciona desde el **Side Panel** del navegador.
+Disponible en dos versiones:
+- **Extension de Chrome** (Manifest V3): funciona desde el Side Panel del navegador.
+- **CLI de Node.js**: herramienta de linea de comandos para procesamiento por lotes y automatizacion.
+
+Ambas versiones comparten exactamente la misma logica de reemplazo de watermark.
 
 ---
 
@@ -11,8 +15,13 @@ Funciona desde el **Side Panel** del navegador.
 - [Caracteristicas](#caracteristicas)
 - [Arquitectura](#arquitectura)
 - [Estructura del proyecto](#estructura-del-proyecto)
-- [Instalacion](#instalacion)
-- [Uso](#uso)
+- [Extension de Chrome](#extension-de-chrome)
+  - [Instalacion](#instalacion-extension)
+  - [Uso](#uso-extension)
+- [CLI de Node.js](#cli-de-nodejs)
+  - [Instalacion](#instalacion-cli)
+  - [Uso](#uso-cli)
+  - [Ejemplos](#ejemplos)
 - [Como funciona el reemplazo de watermark](#como-funciona-el-reemplazo-de-watermark)
   - [Deteccion de color de fondo](#deteccion-de-color-de-fondo)
   - [Posicion y tamano del parche](#posicion-y-tamano-del-parche)
@@ -22,7 +31,7 @@ Funciona desde el **Side Panel** del navegador.
   - [PDFs](#pdfs)
   - [Imagenes](#imagenes)
 - [Dependencias](#dependencias)
-- [Permisos](#permisos)
+- [Permisos (Extension)](#permisos)
 
 ---
 
@@ -33,8 +42,8 @@ Funciona desde el **Side Panel** del navegador.
 - **Inversion inteligente del logo**: analiza el brillo tanto del logo como del fondo para decidir automaticamente si invertir los colores del logo, garantizando contraste en cualquier combinacion.
 - **Color de texto adaptativo**: negro sobre fondos claros, blanco sobre fondos oscuros.
 - **Deteccion automatica de color de fondo**: muestrea el pixel adyacente al parche para igualar el color de fondo de cada pagina individualmente.
-- **Batch processing**: soporta multiples archivos en una sola operacion con barra de progreso.
-- **Soporte dual**: PDFs multi-pagina e imagenes (PNG, JPG).
+- **Batch processing**: soporta multiples archivos en una sola operacion.
+- **Soporte dual**: PDFs multi-pagina e imagenes (PNG, JPG, GIF, WebP, BMP, TIFF).
 - **Alta calidad**: render de PDF a 3x scale, export en JPEG 92% para PDFs y PNG para imagenes.
 
 ---
@@ -42,22 +51,29 @@ Funciona desde el **Side Panel** del navegador.
 ## Arquitectura
 
 ```
-Extension Chrome - Manifest V3
+Watermark-NotebookLM/
   |
-  +-- background.js ............ Service Worker (abre el Side Panel)
+  +-- Extension Chrome (Manifest V3)
+  |     |
+  |     +-- background.js ............ Service Worker (abre el Side Panel)
+  |     +-- sidepanel.html ........... UI del panel lateral
+  |     |     +-- styles.css ......... Tema oscuro con variables CSS
+  |     |     +-- lib/jspdf.umd.min.js
+  |     +-- sidepanel.js ............. Logica principal (modulo ES)
+  |           +-- pdf.js (pdfjsLib) .. Render de paginas PDF en canvas
+  |           +-- jsPDF .............. Generacion del PDF de salida
+  |           +-- Canvas 2D API ...... Manipulacion de pixeles y dibujo
   |
-  +-- sidepanel.html ........... UI del panel lateral
-  |     +-- styles.css ......... Tema oscuro con variables CSS
-  |     +-- lib/jspdf.umd.min.js
-  |
-  +-- sidepanel.js ............. Logica principal (modulo ES)
+  +-- CLI de Node.js (cli/)
         |
-        +-- pdf.js (pdfjsLib) .. Render de paginas PDF en canvas
-        +-- jsPDF .............. Generacion del PDF de salida
-        +-- Canvas 2D API ...... Manipulacion de pixeles y dibujo
+        +-- index.js ................. Entry point, parseo de argumentos (commander)
+        +-- watermark.js ............. Logica de procesamiento (portable, sin DOM)
+        +-- package.json ............. Dependencias: canvas, pdfjs-dist, jspdf, commander
 ```
 
-La extension usa `chrome.sidePanel` API para abrirse como panel lateral en Chrome. Todo el procesamiento ocurre localmente en el navegador; no hay envio de datos a servidores externos.
+La extension usa `chrome.sidePanel` API para abrirse como panel lateral en Chrome. La CLI es una herramienta standalone que replica exactamente la misma logica de negocio.
+
+Todo el procesamiento ocurre **localmente**; no hay envio de datos a servidores externos.
 
 ---
 
@@ -76,14 +92,21 @@ Watermark-NotebookLM/
     jspdf.js                 jsPDF sin minificar (referencia)
     jspdf.umd.min.js         jsPDF UMD - generacion de PDFs
   inputs/
-    1.png, 1x1.png,          Imagenes de prueba para validacion
-    vertical.png
-  package.json               Dependencias npm (referencia; libs van en /lib)
+    (imagenes de prueba)      Agregar PDFs o imagenes aqui para validacion local
+                              (no incluidas en el repo)
+  cli/                       CLI de Node.js (ver seccion dedicada)
+    index.js                 Entry point con commander
+    watermark.js             Logica de applyWatermark, processPDF, processImage
+    package.json             Dependencias npm de la CLI
+    node_modules/            Dependencias instaladas (no commitear)
+  package.json               Dependencias npm de la extension (referencia; libs van en /lib)
 ```
 
 ---
 
-## Instalacion
+## Extension de Chrome
+
+### Instalacion (Extension)
 
 1. Clonar o descargar este repositorio.
 2. (Opcional) Ejecutar `npm install` para descargar dependencias de referencia. Las librerias necesarias ya estan incluidas en `/lib`.
@@ -93,9 +116,7 @@ Watermark-NotebookLM/
 6. Seleccionar la carpeta `Watermark-NotebookLM/`.
 7. La extension aparece como "PDF Watermark Manager" en la barra de extensiones.
 
----
-
-## Uso
+### Uso (Extension)
 
 1. Clickear el icono de la extension para abrir el **Side Panel**.
 2. Arrastrar archivos PDF o imagenes al area de drop (o clickear para seleccionar).
@@ -105,6 +126,76 @@ Watermark-NotebookLM/
    - Si se sube un logo, tiene prioridad sobre el texto.
 4. Clickear **"Process PDF"**.
 5. El archivo procesado se descarga automaticamente como `processed_<nombre-original>`.
+
+---
+
+## CLI de Node.js
+
+Herramienta de linea de comandos que replica exactamente la funcionalidad de la extension Chrome, ideal para procesamiento por lotes, automatizacion y uso en servidores.
+
+### Instalacion (CLI)
+
+```bash
+cd cli/
+npm install
+```
+
+**Requisitos**: Node.js 18+ y las dependencias nativas de `canvas` (node-canvas). En macOS generalmente funciona sin configuracion adicional. En Linux puede requerir:
+```bash
+# Ubuntu/Debian
+sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+# Fedora
+sudo dnf install gcc-c++ cairo-devel pango-devel libjpeg-turbo-devel giflib-devel librsvg2-devel
+```
+
+### Uso (CLI)
+
+```bash
+# Con texto
+node cli/index.js --input archivo.pdf --text "Mi Marca"
+
+# Con logo
+node cli/index.js --input archivo.pdf --logo logo.png
+
+# Con imagen en vez de PDF
+node cli/index.js --input slide.png --logo logo.png
+
+# Multiples archivos
+node cli/index.js --input archivo1.pdf archivo2.pdf --logo logo.png
+
+# Output personalizado (opcional, default: processed_<nombre>)
+node cli/index.js --input archivo.pdf --text "Mi Marca" --output salida.pdf
+```
+
+**Opciones**:
+- `--input <paths...>` (requerido): uno o mas archivos de entrada (PDF o imagen)
+- `--text <text>`: texto a usar como watermark
+- `--logo <path>`: ruta a archivo de logo (PNG recomendado con transparencia)
+- `--output <path>`: ruta de salida personalizada (solo para un archivo)
+
+**Nota**: Debes proporcionar `--text` o `--logo`. Si se proporciona ambos, el logo tiene prioridad.
+
+### Ejemplos
+
+```bash
+# Procesar un PDF con texto
+node cli/index.js --input presentacion.pdf --text "Empresa S.A."
+
+# Procesar con logo personalizado
+node cli/index.js --input slides.pdf --logo ./assets/logo-blanco.png
+
+# Procesar multiples PDFs con el mismo logo
+node cli/index.js --input *.pdf --logo logo.png
+
+# Procesar una imagen
+node cli/index.js --input captura.png --text "Confidencial"
+
+# Output en ruta especifica
+node cli/index.js --input reporte.pdf --text "Borrador" --output ./output/reporte-marcado.pdf
+```
+
+**Output por defecto**: Los archivos se guardan como `processed_<nombre-original>` en el mismo directorio que el archivo de entrada.
 
 ---
 
@@ -126,7 +217,7 @@ Para cada pagina/imagen, la funcion `applyWatermark()`:
 
    Este valor (0-255) se usa para decidir el color del texto y la inversion del logo.
 
-Si el muestreo falla (ej: por restricciones CORS), defaultea a blanco.
+Si el muestreo falla (ej: por restricciones CORS en la extension), defaultea a blanco.
 
 ### Posicion y tamano del parche
 
@@ -159,7 +250,20 @@ Cuando se usa un logo PNG, el sistema analiza **tanto el brillo del logo como el
 | Oscuro | Oscuro | No                 | Invertir logo  |
 | Claro  | Claro  | No                 | Invertir logo  |
 
-La inversion se aplica con `offCtx.filter = 'invert(1)'` sobre un canvas offscreen, y el resultado se dibuja en el canvas principal.
+**Extension**: La inversion se aplica con `offCtx.filter = 'invert(1)'` sobre un canvas offscreen.
+
+**CLI**: La inversion se implementa mediante manipulacion directa de pixeles (no depende de `ctx.filter`, que puede no estar soportado en node-canvas):
+```javascript
+const invertData = offCtx.getImageData(0, 0, width, height);
+const px = invertData.data;
+for (let i = 0; i < px.length; i += 4) {
+    px[i]     = 255 - px[i];     // R
+    px[i + 1] = 255 - px[i + 1]; // G
+    px[i + 2] = 255 - px[i + 2]; // B
+    // Alpha no se toca
+}
+offCtx.putImageData(invertData, 0, 0);
+```
 
 ### Texto con color adaptativo
 
@@ -170,28 +274,32 @@ Cuando no hay logo y se usa texto personalizado:
 
 El texto se centra dentro del parche con `textAlign: 'center'` y `textBaseline: 'middle'`.
 
+Font: `bold ${width * 0.011}px sans-serif`
+
 ---
 
 ## Procesamiento de archivos
 
 ### PDFs
 
-1. Se carga el PDF con **pdf.js** (`pdfjsLib.getDocument()`).
+1. Se carga el PDF con **pdf.js** (`pdfjsLib.getDocument()` / `getDocument()`).
 2. Cada pagina se renderiza en un canvas a **3x scale** para alta calidad.
 3. Se aplica `applyWatermark()` sobre cada pagina.
 4. El canvas resultante se exporta como JPEG al 92% de calidad.
-5. Se reconstruye un nuevo PDF con **jsPDF**, detectando orientacion (landscape/portrait) por pagina.
-6. Se descarga como `processed_<nombre-original>.pdf`.
+5. Se reconstruye un nuevo PDF con **jsPDF**, detectando orientacion (landscape si `width > height`, portrait si no) por pagina.
+6. Se guarda como `processed_<nombre-original>.pdf`.
 
 ### Imagenes
 
-1. Se carga la imagen en un canvas al tamaño original.
+1. Se carga la imagen en un canvas al tamano original.
 2. Se aplica `applyWatermark()`.
-3. Se exporta como PNG (sin perdida) y se descarga como `processed_<nombre-original>`.
+3. Se exporta como PNG (sin perdida) y se guarda como `processed_<nombre-original>`.
 
 ---
 
 ## Dependencias
+
+### Extension de Chrome
 
 | Libreria   | Version | Ubicacion          | Funcion                         |
 |------------|---------|--------------------|----------------------------------|
@@ -200,13 +308,41 @@ El texto se centra dentro del parche con `textAlign: 'center'` y `textBaseline: 
 
 Ambas librerias estan incluidas localmente en `/lib`. No requieren conexion a internet para funcionar.
 
+### CLI de Node.js
+
+| Libreria     | Version  | Funcion                                              |
+|--------------|----------|-------------------------------------------------------|
+| canvas       | ^3.1.0   | API de Canvas 2D en Node.js (node-canvas)            |
+| pdfjs-dist   | ^3.11.174| Render de paginas PDF en canvas (compatible con Node)|
+| jspdf        | ^4.1.0   | Generacion del PDF de salida                         |
+| commander    | ^13.1.0  | Parseo de argumentos CLI                             |
+
+**Nota sobre pdfjs-dist**: La CLI usa version 3.x en lugar de 5.x porque la version 5 no soporta correctamente el render de PDFs con imagenes inline en Node.js (falla con error "Image or Canvas expected"). La version 3.11.174 incluye soporte nativo para Node.js con la clase `NodeCanvasFactory`.
+
 ---
 
-## Permisos
+## Permisos (Extension)
 
 | Permiso       | Uso                                                    |
 |---------------|---------------------------------------------------------|
 | `sidePanel`   | Abrir la interfaz como panel lateral de Chrome          |
 | `<all_urls>`  | Acceso a recursos web para las librerias del worker     |
 
-Todo el procesamiento de archivos ocurre **localmente** en el navegador. No se envia ni recibe data de servidores externos.
+Todo el procesamiento de archivos ocurre **localmente** en el navegador o en la maquina del usuario (CLI). No se envia ni recibe data de servidores externos.
+
+---
+
+## Comparacion Extension vs CLI
+
+| Aspecto              | Extension Chrome                    | CLI de Node.js                      |
+|----------------------|-------------------------------------|-------------------------------------|
+| **Interfaz**         | GUI en Side Panel                   | Linea de comandos                   |
+| **Batch processing** | Si (con barra de progreso visual)   | Si (con mensajes en consola)        |
+| **Automatizacion**   | Manual (drag & drop)                | Scriptable, integrable en pipelines |
+| **Servidor**         | No                                  | Si (puede correr en servidores)     |
+| **Dependencias**     | Incluidas en `/lib`                 | npm (`canvas`, `pdfjs-dist`, etc.)  |
+| **Inversion logo**   | `ctx.filter = 'invert(1)'`          | Manipulacion directa de pixeles     |
+| **Logica de negocio**| Identica                            | Identica                            |
+| **Valores numericos**| Identicos                           | Identicos                           |
+
+Ambas versiones producen resultados visualmente identicos para los mismos archivos de entrada.

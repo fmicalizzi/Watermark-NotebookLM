@@ -1,0 +1,32 @@
+{
+  "name": "watermark-cli",
+  "version": "1.0.0",
+  "description": "CLI tool to replace NotebookLM watermarks in PDFs and images",
+  "main": "index.js",
+  "bin": {
+    "watermark": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node index.js --input ../inputs/test.pdf --text \"Test\""
+  },
+  "keywords": [
+    "watermark",
+    "pdf",
+    "cli",
+    "notebooklm"
+  ],
+  "author": "Franco Micalizzi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fmicalizzi/Watermark-NotebookLM.git"
+  },
+  "type": "module",
+  "dependencies": {
+    "canvas": "^3.1.0",
+    "commander": "^13.1.0",
+    "jspdf": "^4.1.0",
+    "pdfjs-dist": "^3.11.174"
+  }
+}

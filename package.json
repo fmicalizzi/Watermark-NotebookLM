@@ -1,14 +1,24 @@
 {
   "name": "watermark-notebooklm",
   "version": "1.0.0",
-  "description": "",
+  "description": "Chrome extension and Node.js CLI to remove NotebookLM watermarks from PDFs and images, replacing them with custom logos or text.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "notebooklm",
+    "watermark",
+    "pdf",
+    "chrome-extension",
+    "cli"
+  ],
+  "author": "Franco Micalizzi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fmicalizzi/Watermark-NotebookLM.git"
+  },
   "type": "commonjs",
   "dependencies": {
     "jspdf": "^4.1.0",

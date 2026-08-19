@@ -20,3 +20,16 @@ build/
 
 # Logs
 *.log
+
+# Processed files (output from extension/CLI)
+processed_*
+**/processed_*
+
+# Test/input images (large files, not needed for the repo)
+inputs/*.png
+inputs/*.jpg
+inputs/*.jpeg
+
+# Temporary files
+*.tmp
+*.temp
